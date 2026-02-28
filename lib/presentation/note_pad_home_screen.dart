@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
+import 'package:notex_with_hive/models/note_model.dart';
 
 class NotePadHomeScreen extends StatefulWidget {
   const NotePadHomeScreen({super.key});
@@ -16,9 +18,44 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
   late List<Note> notes;
   final TextEditingController _noteController = TextEditingController();
 
+  /// Initialize Hive box for notes
+  late Box<Note> _noteStorage;
+
+  /// Method to add a note to Hive
+  void _addNoteToHive(Note note) {
+    _noteStorage.add(note);
+  }
+
+  /// Method to delete a note from Hive
+  void _deleteNoteFromHive(int index) {
+    _noteStorage.deleteAt(index);
+  }
+
+  /// Method to update a note in Hive
+  void _updateNoteInHive(int index, Note updatedNote) {
+    _noteStorage.putAt(index, updatedNote);
+  }
+
+  /// Method to fetch all notes from Hive
+  List<Note> _fetchNotesFromHive() {
+    return _noteStorage.values.toList().cast<Note>();
+  }
+
+  /// Method to clear all notes from Hive
+  void _clearAllNotesFromHive() {
+    _noteStorage.clear();
+  }
+
+  /// Method to read a specific note from Hive
+  Note _readNoteFromHive(int index) {
+    return _noteStorage.getAt(index) as Note;
+  }  
+
   @override
   void initState() {
     super.initState();
+    _noteStorage = Hive.box<Note>('notes');
+    
     _fabController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -38,26 +75,30 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
     );
 
     _fabController.forward();
-    notes = [
-      Note(
-        title: 'Welcome!',
-        content: 'Create your first note by tapping the + button',
-        color: Colors.blue,
-        date: DateTime.now(),
-      ),
-      Note(
-        title: 'Beautiful Design',
-        content: 'Enjoy smooth animations and intuitive UI',
-        color: Colors.purple,
-        date: DateTime.now().subtract(const Duration(hours: 2)),
-      ),
-      Note(
-        title: 'Easy to Use',
-        content: 'Tap any note to view or edit it',
-        color: Colors.orange,
-        date: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-    ];
+    // Load notes from Hive, or use sample data if empty
+    notes = _fetchNotesFromHive();
+    if (notes.isEmpty) {
+      notes = [
+        // Note(
+        //   title: 'Welcome!',
+        //   content: 'Create your first note by tapping the + button',
+        //   color: Colors.blue,
+        //   date: DateTime.now(),
+        // ),
+        // Note(
+        //   title: 'Beautiful Design',
+        //   content: 'Enjoy smooth animations and intuitive UI',
+        //   color: Colors.purple,
+        //   date: DateTime.now().subtract(const Duration(hours: 2)),
+        // ),
+        // Note(
+        //   title: 'Easy to Use',
+        //   content: 'Tap any note to view or edit it',
+        //   color: Colors.orange,
+        //   date: DateTime.now().subtract(const Duration(days: 1)),
+        // ),
+      ];
+    }
 
     _listController.forward();
   }
@@ -140,16 +181,15 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
                   ElevatedButton.icon(
                     onPressed: () {
                       if (_noteController.text.isNotEmpty) {
+                        final newNote = Note(
+                          title: _noteController.text.split('\n').first,
+                          content: _noteController.text,
+                          color: _getRandomColor(),
+                          date: DateTime.now(),
+                        );
+                        _addNoteToHive(newNote);
                         setState(() {
-                          notes.insert(
-                            0,
-                            Note(
-                              title: _noteController.text.split('\n').first,
-                              content: _noteController.text,
-                              color: _getRandomColor(),
-                              date: DateTime.now(),
-                            ),
-                          );
+                          notes.insert(0, newNote);
                         });
                         _noteController.clear();
                         Navigator.pop(context);
@@ -373,6 +413,7 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
                             IconButton(
                               icon: const Icon(Icons.close),
                               onPressed: () {
+                                _deleteNoteFromHive(index);
                                 setState(() {
                                   notes.removeAt(index);
                                 });
@@ -426,18 +467,4 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
       return '${date.month}/${date.day}/${date.year}';
     }
   }
-}
-
-class Note {
-  final String title;
-  final String content;
-  final Color color;
-  final DateTime date;
-
-  Note({
-    required this.title,
-    required this.content,
-    required this.color,
-    required this.date,
-  });
 }

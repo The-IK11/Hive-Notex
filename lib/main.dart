@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:notex_with_hive/models/note_model.dart';
 import 'package:notex_with_hive/presentation/note_pad_home_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Hive.initFlutter();
+  
+  // Open the box with the correct type
+  await Hive.openBox<Note>('notes');
+
   runApp(const MyApp());
 }
 
