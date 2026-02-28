@@ -8,6 +8,9 @@ void main() async {
   
   await Hive.initFlutter();
   
+  // Register the Note adapter
+  Hive.registerAdapter(NoteAdapter());
+  
   // Open the box with the correct type
   await Hive.openBox<Note>('notes');
 
