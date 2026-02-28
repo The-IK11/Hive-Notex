@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:notex_with_hive/models/note_model.dart';
+import 'package:notex_with_hive/services/note_hive_service.dart';
+import 'package:notex_with_hive/utils/animations.dart';
+import 'package:notex_with_hive/utils/note_utils.dart';
+import 'package:notex_with_hive/presentation/widgets/note_card.dart';
+import 'package:notex_with_hive/presentation/widgets/add_note_dialog.dart';
 
 class NotePadHomeScreen extends StatefulWidget {
   const NotePadHomeScreen({super.key});
@@ -11,102 +15,32 @@ class NotePadHomeScreen extends StatefulWidget {
 
 class _NotePadHomeScreenState extends State<NotePadHomeScreen>
     with TickerProviderStateMixin {
-  late AnimationController _fabController;
-  late AnimationController _listController;
-  late Animation<double> _fabScale;
-  late Animation<double> _fabRotation;
+  late NotePadAnimations _animations;
   late List<Note> notes;
   final TextEditingController _noteController = TextEditingController();
-
-  /// Initialize Hive box for notes
-  late Box<Note> _noteStorage;
-
-  /// Method to add a note to Hive
-  void _addNoteToHive(Note note) {
-    _noteStorage.add(note);
-  }
-
-  /// Method to delete a note from Hive
-  void _deleteNoteFromHive(int index) {
-    _noteStorage.deleteAt(index);
-  }
-
-  /// Method to update a note in Hive
-  void _updateNoteInHive(int index, Note updatedNote) {
-    _noteStorage.putAt(index, updatedNote);
-  }
-
-  /// Method to fetch all notes from Hive
-  List<Note> _fetchNotesFromHive() {
-    return _noteStorage.values.toList().cast<Note>();
-  }
-
-  /// Method to clear all notes from Hive
-  void _clearAllNotesFromHive() {
-    _noteStorage.clear();
-  }
-
-  /// Method to read a specific note from Hive
-  Note _readNoteFromHive(int index) {
-    return _noteStorage.getAt(index) as Note;
-  }  
+  final NoteHiveService _noteService = NoteHiveService();
 
   @override
   void initState() {
     super.initState();
-    _noteStorage = Hive.box<Note>('notes');
-    
-    _fabController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
 
-    _listController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
+    // Initialize Hive service
+    _noteService.initialize();
 
-    _fabScale = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
-    );
+    // Initialize animations
+    _animations = NotePadAnimations();
+    _animations.initializeAnimations(this);
 
-    _fabRotation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _fabController, curve: Curves.easeInOut),
-    );
+    // Load notes from Hive
+    notes = _noteService.fetchAllNotes();
 
-    _fabController.forward();
-    // Load notes from Hive, or use sample data if empty
-    notes = _fetchNotesFromHive();
-    if (notes.isEmpty) {
-      notes = [
-        // Note(
-        //   title: 'Welcome!',
-        //   content: 'Create your first note by tapping the + button',
-        //   color: Colors.blue,
-        //   date: DateTime.now(),
-        // ),
-        // Note(
-        //   title: 'Beautiful Design',
-        //   content: 'Enjoy smooth animations and intuitive UI',
-        //   color: Colors.purple,
-        //   date: DateTime.now().subtract(const Duration(hours: 2)),
-        // ),
-        // Note(
-        //   title: 'Easy to Use',
-        //   content: 'Tap any note to view or edit it',
-        //   color: Colors.orange,
-        //   date: DateTime.now().subtract(const Duration(days: 1)),
-        // ),
-      ];
-    }
-
-    _listController.forward();
+    // Start animations
+    _animations.startAnimations();
   }
 
   @override
   void dispose() {
-    _fabController.dispose();
-    _listController.dispose();
+    _animations.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -114,121 +48,28 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
   void _addNote() {
     showDialog(
       context: context,
-      builder: (context) => _buildAddNoteDialog(),
-    );
-  }
-
-  Widget _buildAddNoteDialog() {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      child: SingleChildScrollView(
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 20,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _noteController,
-                maxLines: 8,
-                decoration: InputDecoration(
-                  hintText: 'Enter your note...',
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[300]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.deepPurple,
-                      width: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                    label: const Text('Cancel'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey[300],
-                      foregroundColor: Colors.black,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      if (_noteController.text.isNotEmpty) {
-                        final newNote = Note(
-                          title: _noteController.text.split('\n').first,
-                          content: _noteController.text,
-                          color: _getRandomColor(),
-                          date: DateTime.now(),
-                        );
-                        _addNoteToHive(newNote);
-                        setState(() {
-                          notes.insert(0, newNote);
-                        });
-                        _noteController.clear();
-                        Navigator.pop(context);
-                      }
-                    },
-                    icon: const Icon(Icons.check),
-                    label: const Text('Save'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
+      builder: (context) => AddNoteDialog(
+        noteController: _noteController,
+        onSave: () {
+          final newNote = Note(
+            title: NotePadUtils.extractTitle(_noteController.text),
+            content: _noteController.text,
+            color: NotePadUtils.getRandomColor(),
+            date: DateTime.now(),
+          );
+          _noteService.addNote(newNote);
+          setState(() {
+            notes.insert(0, newNote);
+          });
+          _noteController.clear();
+          Navigator.pop(context);
+        },
+        onCancel: () {
+          _noteController.clear();
+          Navigator.pop(context);
+        },
       ),
     );
-  }
-
-  Color _getRandomColor() {
-    final colors = [
-      Colors.blue,
-      Colors.purple,
-      Colors.orange,
-      Colors.pink,
-      Colors.teal,
-      Colors.indigo,
-    ];
-    colors.shuffle();
-    return colors.first;
   }
 
   @override
@@ -252,7 +93,10 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
             padding: const EdgeInsets.all(16.0),
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 2,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(20),
@@ -275,13 +119,37 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
               padding: const EdgeInsets.all(16),
               itemCount: notes.length,
               itemBuilder: (context, index) {
-                return _buildNoteCard(notes[index], index);
+                return NoteCard(
+                  note: notes[index],
+                  index: index,
+                  totalNotes: notes.length,
+                  animation: _animations.getListItemAnimation(
+                    index,
+                    notes.length,
+                  ),
+                  onDelete: () {
+                    _noteService.deleteNote(index);
+                    setState(() {
+                      notes.removeAt(index);
+                    });
+                  },
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Viewing: ${notes[index].title}'),
+                        duration: const Duration(milliseconds: 800),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: notes[index].color,
+                      ),
+                    );
+                  },
+                );
               },
             ),
       floatingActionButton: ScaleTransition(
-        scale: _fabScale,
+        scale: _animations.fabScale,
         child: RotationTransition(
-          turns: _fabRotation,
+          turns: _animations.fabRotation,
           child: FloatingActionButton(
             onPressed: _addNote,
             backgroundColor: Colors.deepPurple,
@@ -322,149 +190,10 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
           const SizedBox(height: 8),
           Text(
             'Create your first note to get started',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildNoteCard(Note note, int index) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1, 0),
-          end: Offset.zero,
-        ).animate(
-          CurvedAnimation(
-            parent: _listController,
-            curve: Interval(
-              (index / notes.length * 0.5).clamp(0, 1),
-              ((index + 1) / notes.length * 0.5).clamp(0, 1),
-              curve: Curves.easeOut,
-            ),
-          ),
-        ),
-        child: GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Viewing: ${note.title}'),
-                duration: const Duration(milliseconds: 800),
-                behavior: SnackBarBehavior.floating,
-                backgroundColor: note.color,
-              ),
-            );
-          },
-          child: MouseRegion(
-            onEnter: (_) {
-              // For hover effects on desktop
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: note.color.withOpacity(0.15),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: note.color,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                note.title,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                _deleteNoteFromHive(index);
-                                setState(() {
-                                  notes.removeAt(index);
-                                });
-                              },
-                              splashRadius: 20,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          note.content,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                            height: 1.5,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _formatDate(note.date),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final noteDate = DateTime(date.year, date.month, date.day);
-
-    if (noteDate == today) {
-      return 'Today at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (noteDate == yesterday) {
-      return 'Yesterday at ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-    } else {
-      return '${date.month}/${date.day}/${date.year}';
-    }
   }
 }
