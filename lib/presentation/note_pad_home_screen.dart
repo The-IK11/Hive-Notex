@@ -5,6 +5,7 @@ import 'package:notex_with_hive/utils/animations.dart';
 import 'package:notex_with_hive/utils/note_utils.dart';
 import 'package:notex_with_hive/presentation/widgets/note_card.dart';
 import 'package:notex_with_hive/presentation/widgets/add_note_dialog.dart';
+import 'package:notex_with_hive/presentation/widgets/edit_note_dialog.dart';
 
 class NotePadHomeScreen extends StatefulWidget {
   const NotePadHomeScreen({super.key});
@@ -62,12 +63,33 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
             notes.insert(0, newNote);
           });
           _noteController.clear();
-          Navigator.pop(context);
+        
         },
         onCancel: () {
           _noteController.clear();
-          Navigator.pop(context);
         },
+      ),
+    );
+  }
+
+  void _editNote(int index) {
+    showDialog(
+      context: context,
+      builder: (context) => EditNoteDialog(
+        initialContent: notes[index].content,
+        onSave: (updatedContent) {
+          final updatedNote = Note(
+            title: NotePadUtils.extractTitle(updatedContent),
+            content: updatedContent,
+            color: notes[index].color,
+            date: notes[index].date,
+          );
+          _noteService.updateNote(index, updatedNote);
+          setState(() {
+            notes[index] = updatedNote;
+          });
+        },
+        onCancel: () {},
       ),
     );
   }
@@ -127,6 +149,7 @@ class _NotePadHomeScreenState extends State<NotePadHomeScreen>
                     index,
                     notes.length,
                   ),
+                  onEdit: () => _editNote(index),
                   onDelete: () {
                     _noteService.deleteNote(index);
                     setState(() {

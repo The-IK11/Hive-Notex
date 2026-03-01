@@ -8,6 +8,7 @@ class NoteCard extends StatelessWidget {
   final int totalNotes;
   final Animation<Offset> animation;
   final VoidCallback onDelete;
+  final VoidCallback onEdit;
   final VoidCallback onTap;
 
   const NoteCard({
@@ -17,6 +18,7 @@ class NoteCard extends StatelessWidget {
     required this.totalNotes,
     required this.animation,
     required this.onDelete,
+    required this.onEdit,
     required this.onTap,
   }) : super(key: key);
 
@@ -65,7 +67,7 @@ class NoteCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title with delete button
+                        // Title with edit and delete buttons
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -82,9 +84,17 @@ class NoteCard extends StatelessWidget {
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: onDelete,
+                              icon: const Icon(Icons.edit_outlined),
+                              color: Colors.deepPurple,
                               splashRadius: 20,
+                              tooltip: 'Edit',
+                              onPressed: onEdit,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              splashRadius: 20,
+                              tooltip: 'Delete',
+                              onPressed: onDelete,
                             ),
                           ],
                         ),
